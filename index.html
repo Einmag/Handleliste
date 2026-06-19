@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#174a3a">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Handleliste">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Handleliste</title>
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -132,22 +134,18 @@
   <div id="authModal" class="modal" aria-hidden="true">
     <section class="modal-card">
       <h2>Login</h2>
-      <p class="item-sub">Første gang: legg inn Supabase URL og anon key.</p>
+      <p class="item-sub">Skriv inn e-post. Verifiser med koden fra e-posten i appen.</p>
       <form id="authForm" class="search-form">
-        <label>
-          Supabase URL
-          <input id="authUrlInput" type="url" placeholder="https://xxxx.supabase.co" required>
-        </label>
-        <label>
-          Supabase anon key
-          <input id="authAnonKeyInput" type="text" placeholder="eyJ..." required>
-        </label>
         <label>
           E-post
           <input id="authEmailInput" type="email" placeholder="navn@epost.no" required>
         </label>
+        <label id="authCodeWrap" hidden>
+          Engangskode
+          <input id="authCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+        </label>
         <div class="row-actions">
-          <button id="authSubmitBtn" class="btn primary" type="submit">Send login-lenke</button>
+          <button id="authSubmitBtn" class="btn primary" type="submit">Send kode</button>
           <button id="authCancelBtn" class="btn secondary" type="button">Avbryt</button>
         </div>
       </form>

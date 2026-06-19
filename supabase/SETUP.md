@@ -14,8 +14,9 @@
 
 ## 4. Configure app
 1. Open app and press `Login`.
-2. Enter Supabase URL and anon key once.
-3. Enter your email to receive login link.
+2. Set Supabase URL and anon key in `app.js` (`EMBEDDED_CLOUD_CONFIG`) and deploy.
+3. Enter your email in the app.
+4. Enter the one-time code from email in the app.
 
 ## 5. Family sharing model
 - Data in `shared_lists`, `shared_list_items`, `shared_catalog`, `shared_stores` is shared across household members.

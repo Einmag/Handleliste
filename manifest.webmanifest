@@ -1,11 +1,17 @@
 {
+  "id": "./",
   "name": "Handleliste",
   "short_name": "Handleliste",
   "description": "Butikktilpasset handleliste",
-  "start_url": "./index.html",
+  "lang": "nb-NO",
+  "start_url": "./",
+  "scope": "./",
+  "display_override": ["standalone", "minimal-ui"],
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f2f6ef",
   "theme_color": "#174a3a",
+  "categories": ["shopping", "productivity"],
   "icons": [
     {
       "src": "icons/icon-192.svg",

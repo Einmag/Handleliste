@@ -1,6 +1,12 @@
 const STORAGE_KEY = "handleliste.state.v1";
 const CLOUD_CONFIG_KEY = "handleliste.cloud.config.v1";
 
+// App-wide Supabase config for this deployment. Fill these once and keep the auth UI email-only.
+const EMBEDDED_CLOUD_CONFIG = {
+  url: "https://rrwsqxsxwvdcfvdhfpnp.supabase.co",
+  anonKey: "sb_publishable_z9KN-e2CKftRuWZktNLs3g_iNHEnP8i"
+};
+
 const DEFAULT_CATEGORIES = [
   "Frukt og grønt",
   "Meieri",
@@ -24,9 +30,10 @@ const els = {
   loginBtn: document.getElementById("loginBtn"),
   authModal: document.getElementById("authModal"),
   authForm: document.getElementById("authForm"),
-  authUrlInput: document.getElementById("authUrlInput"),
-  authAnonKeyInput: document.getElementById("authAnonKeyInput"),
   authEmailInput: document.getElementById("authEmailInput"),
+  authCodeInput: document.getElementById("authCodeInput"),
+  authCodeWrap: document.getElementById("authCodeWrap"),
+  authSubmitBtn: document.getElementById("authSubmitBtn"),
   authCancelBtn: document.getElementById("authCancelBtn"),
   addItemForm: document.getElementById("addItemForm"),
   itemNameInput: document.getElementById("itemNameInput"),
@@ -55,6 +62,7 @@ const els = {
 
 let suggestionIndex = -1;
 let suggestionData = [];
+let pendingOtpEmail = null;
 
 const cloud = {
   client: null,
@@ -249,6 +257,10 @@ async function initCloudAuth() {
 }
 
 function readCloudConfig() {
+  if (EMBEDDED_CLOUD_CONFIG.url && EMBEDDED_CLOUD_CONFIG.anonKey) {
+    return EMBEDDED_CLOUD_CONFIG;
+  }
+
   const raw = localStorage.getItem(CLOUD_CONFIG_KEY);
   if (!raw) {
     return null;
@@ -283,10 +295,12 @@ async function handleLoginButton() {
 }
 
 function openAuthModal() {
-  const existing = readCloudConfig();
-  els.authUrlInput.value = existing?.url || "";
-  els.authAnonKeyInput.value = existing?.anonKey || "";
   els.authEmailInput.value = "";
+  els.authCodeInput.value = "";
+  els.authCodeWrap.hidden = true;
+  els.authCodeInput.required = false;
+  els.authSubmitBtn.textContent = "Send kode";
+  pendingOtpEmail = null;
   els.authModal.classList.add("is-open");
   els.authModal.setAttribute("aria-hidden", "false");
   els.authEmailInput.focus();
@@ -295,42 +309,66 @@ function openAuthModal() {
 function closeAuthModal() {
   els.authModal.classList.remove("is-open");
   els.authModal.setAttribute("aria-hidden", "true");
+  els.authCodeWrap.hidden = true;
+  els.authCodeInput.required = false;
+  els.authCodeInput.value = "";
+  els.authSubmitBtn.textContent = "Send kode";
+  pendingOtpEmail = null;
 }
 
 async function onAuthFormSubmit(event) {
   event.preventDefault();
 
-  const url = (els.authUrlInput.value || "").trim();
-  const anonKey = (els.authAnonKeyInput.value || "").trim();
   const email = (els.authEmailInput.value || "").trim();
+  const code = (els.authCodeInput.value || "").trim();
 
-  if (!url || !anonKey || !email) {
-    setStatus("Fyll ut Supabase URL, anon key og e-post.");
+  if (!email) {
+    setStatus("Fyll ut e-post.");
     return;
   }
 
-  localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify({ url, anonKey }));
-
   await initCloudAuth();
   if (!cloud.client) {
-    setStatus("Klarte ikke å starte login.");
+    setStatus("Mangler Supabase-oppsett i app.js.");
+    return;
+  }
+
+  if (code) {
+    const verifyEmail = pendingOtpEmail || email;
+    const { error: verifyError } = await cloud.client.auth.verifyOtp({
+      email: verifyEmail,
+      token: code,
+      type: "email"
+    });
+
+    if (verifyError) {
+      setStatus("Koden er ugyldig eller utløpt. Be om ny kode.");
+      return;
+    }
+
+    closeAuthModal();
+    setStatus("Innlogget.");
     return;
   }
 
   const { error } = await cloud.client.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: window.location.href
+      shouldCreateUser: true
     }
   });
 
   if (error) {
-    setStatus("Innlogging feilet. Sjekk oppsett og e-post.");
+    setStatus("Innlogging feilet. Sjekk e-post.");
     return;
   }
 
-  closeAuthModal();
-  setStatus("Innloggingslenke sendt. Sjekk e-post på mobilen.");
+  pendingOtpEmail = email;
+  els.authCodeWrap.hidden = false;
+  els.authCodeInput.required = true;
+  els.authSubmitBtn.textContent = "Verifiser kode";
+  els.authCodeInput.focus();
+  setStatus("Kode sendt til e-post. Skriv inn koden her i appen.");
 }
 
 function scheduleCloudPush() {
@@ -1843,7 +1881,46 @@ function haversine(lat1, lon1, lat2, lon2) {
 function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./sw.js").catch(() => {
+      navigator.serviceWorker.register("./sw.js").then((registration) => {
+        let refreshing = false;
+
+        const activateWaitingWorker = () => {
+          if (!registration.waiting) {
+            return;
+          }
+          setStatus("Ny versjon klar. Oppdaterer app...");
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        };
+
+        activateWaitingWorker();
+
+        registration.addEventListener("updatefound", () => {
+          const installing = registration.installing;
+          if (!installing) {
+            return;
+          }
+
+          installing.addEventListener("statechange", () => {
+            if (installing.state === "installed" && navigator.serviceWorker.controller) {
+              activateWaitingWorker();
+            }
+          });
+        });
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) {
+            return;
+          }
+          refreshing = true;
+          window.location.reload();
+        });
+
+        setInterval(() => {
+          registration.update().catch(() => {
+            // Ignore transient update check failures.
+          });
+        }, 60 * 1000);
+      }).catch(() => {
         setStatus("Klarte ikke å registrere service worker.");
       });
     });
