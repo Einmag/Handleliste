@@ -116,49 +116,154 @@ alter table public.shared_stores enable row level security;
 alter table public.user_store_state enable row level security;
 
 -- households
-create policy if not exists households_select on public.households
-for select using (public.is_household_member(id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'households'
+      and policyname = 'households_select'
+  ) then
+    create policy households_select on public.households
+    for select using (public.is_household_member(id));
+  end if;
 
-create policy if not exists households_insert on public.households
-for insert with check (created_by = auth.uid());
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'households'
+      and policyname = 'households_insert'
+  ) then
+    create policy households_insert on public.households
+    for insert with check (created_by = auth.uid());
+  end if;
 
-create policy if not exists households_update on public.households
-for update using (public.is_household_member(id));
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'households'
+      and policyname = 'households_update'
+  ) then
+    create policy households_update on public.households
+    for update using (public.is_household_member(id));
+  end if;
+end $$;
 
 -- household_members
-create policy if not exists household_members_select on public.household_members
-for select using (public.is_household_member(household_id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'household_members'
+      and policyname = 'household_members_select'
+  ) then
+    create policy household_members_select on public.household_members
+    for select using (public.is_household_member(household_id));
+  end if;
 
-create policy if not exists household_members_insert on public.household_members
-for insert with check (public.is_household_member(household_id) or user_id = auth.uid());
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'household_members'
+      and policyname = 'household_members_insert'
+  ) then
+    create policy household_members_insert on public.household_members
+    for insert with check (public.is_household_member(household_id) or user_id = auth.uid());
+  end if;
 
-create policy if not exists household_members_update on public.household_members
-for update using (public.is_household_member(household_id));
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'household_members'
+      and policyname = 'household_members_update'
+  ) then
+    create policy household_members_update on public.household_members
+    for update using (public.is_household_member(household_id));
+  end if;
+end $$;
 
 -- shared_lists
-create policy if not exists shared_lists_all on public.shared_lists
-for all using (public.is_household_member(household_id))
-with check (public.is_household_member(household_id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'shared_lists'
+      and policyname = 'shared_lists_all'
+  ) then
+    create policy shared_lists_all on public.shared_lists
+    for all using (public.is_household_member(household_id))
+    with check (public.is_household_member(household_id));
+  end if;
+end $$;
 
 -- shared_list_items
-create policy if not exists shared_list_items_all on public.shared_list_items
-for all using (public.is_household_member(household_id))
-with check (public.is_household_member(household_id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'shared_list_items'
+      and policyname = 'shared_list_items_all'
+  ) then
+    create policy shared_list_items_all on public.shared_list_items
+    for all using (public.is_household_member(household_id))
+    with check (public.is_household_member(household_id));
+  end if;
+end $$;
 
 -- shared_catalog
-create policy if not exists shared_catalog_all on public.shared_catalog
-for all using (public.is_household_member(household_id))
-with check (public.is_household_member(household_id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'shared_catalog'
+      and policyname = 'shared_catalog_all'
+  ) then
+    create policy shared_catalog_all on public.shared_catalog
+    for all using (public.is_household_member(household_id))
+    with check (public.is_household_member(household_id));
+  end if;
+end $$;
 
 -- shared_stores
-create policy if not exists shared_stores_all on public.shared_stores
-for all using (public.is_household_member(household_id))
-with check (public.is_household_member(household_id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'shared_stores'
+      and policyname = 'shared_stores_all'
+  ) then
+    create policy shared_stores_all on public.shared_stores
+    for all using (public.is_household_member(household_id))
+    with check (public.is_household_member(household_id));
+  end if;
+end $$;
 
 -- user_store_state
-create policy if not exists user_store_state_select on public.user_store_state
-for select using (public.is_household_member(household_id));
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'user_store_state'
+      and policyname = 'user_store_state_select'
+  ) then
+    create policy user_store_state_select on public.user_store_state
+    for select using (public.is_household_member(household_id));
+  end if;
 
-create policy if not exists user_store_state_upsert on public.user_store_state
-for all using (user_id = auth.uid() and public.is_household_member(household_id))
-with check (user_id = auth.uid() and public.is_household_member(household_id));
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'user_store_state'
+      and policyname = 'user_store_state_upsert'
+  ) then
+    create policy user_store_state_upsert on public.user_store_state
+    for all using (user_id = auth.uid() and public.is_household_member(household_id))
+    with check (user_id = auth.uid() and public.is_household_member(household_id));
+  end if;
+end $$;

@@ -10,7 +10,7 @@
 
 ## 3. Configure redirect URL
 1. In Authentication -> URL Configuration, add your app URL.
-2. For local mobile testing, add your HTTPS tunnel URL.
+2. If you later add mobile testing, add that HTTPS tunnel URL too.
 
 ## 4. Configure app
 1. Open app and press `Login`.
