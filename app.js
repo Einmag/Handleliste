@@ -342,7 +342,7 @@ async function onAuthFormSubmit(event) {
     });
 
     if (verifyError) {
-      setStatus("Koden er ugyldig eller utløpt. Be om ny kode.");
+      setStatus(`Verifisering feilet: ${verifyError.message || "ukjent feil"}`);
       return;
     }
 
@@ -359,7 +359,7 @@ async function onAuthFormSubmit(event) {
   });
 
   if (error) {
-    setStatus("Innlogging feilet. Sjekk e-post.");
+    setStatus(`Kunne ikke sende kode: ${error.message || "ukjent feil"}`);
     return;
   }
 
