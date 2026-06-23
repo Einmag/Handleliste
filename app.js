@@ -368,7 +368,7 @@ async function onAuthFormSubmit(event) {
   els.authCodeInput.required = true;
   els.authSubmitBtn.textContent = "Verifiser kode";
   els.authCodeInput.focus();
-  setStatus("Kode sendt til e-post. Skriv inn koden her i appen.");
+  setStatus("Kode sendt. Ikke åpne e-postlenken i Safari, skriv koden inn i appen.");
 }
 
 function scheduleCloudPush() {
@@ -1523,6 +1523,9 @@ function renderStoreOrderEditor() {
   const order = normalizeCategoryOrder(store.categoryOrder, state.categories);
   store.categoryOrder = order;
 
+  const list = document.createElement("div");
+  list.className = "store-order-list";
+
   order.forEach((categoryId, index) => {
     const category = state.categories.find((entry) => entry.id === categoryId);
     if (!category) {
@@ -1530,41 +1533,49 @@ function renderStoreOrderEditor() {
     }
 
     const row = document.createElement("div");
-    row.className = "row";
+    row.className = "store-order-row";
+    row.dataset.categoryId = categoryId;
 
     const name = document.createElement("strong");
     name.textContent = `${index + 1}. ${category.name}`;
 
-    const actions = document.createElement("div");
-    actions.className = "row-actions";
+    const handle = document.createElement("span");
+    handle.className = "drag-handle";
+    handle.textContent = "Flytt";
 
-    const upBtn = document.createElement("button");
-    upBtn.type = "button";
-    upBtn.className = "btn secondary";
-    upBtn.textContent = "Opp";
-    upBtn.disabled = index === 0;
-    upBtn.addEventListener("click", () => {
-      moveInArray(store.categoryOrder, index, index - 1);
+    row.append(name, handle);
+    list.append(row);
+  });
+
+  els.storeOrderContainer.append(list);
+
+  if (!window.Sortable) {
+    const info = document.createElement("p");
+    info.className = "item-sub";
+    info.textContent = "Kunne ikke starte drag-and-drop. Last siden på nytt.";
+    els.storeOrderContainer.append(info);
+    return;
+  }
+
+  new window.Sortable(list, {
+    animation: 140,
+    handle: ".drag-handle",
+    ghostClass: "store-order-ghost",
+    chosenClass: "store-order-chosen",
+    dragClass: "store-order-dragging",
+    onEnd: (event) => {
+      const oldIndex = event.oldIndex;
+      const newIndex = event.newIndex;
+      if (oldIndex == null || newIndex == null || oldIndex === newIndex) {
+        return;
+      }
+
+      moveInArray(store.categoryOrder, oldIndex, newIndex);
       store.updatedAt = nowIso();
       saveState();
       renderAll();
-    });
-
-    const downBtn = document.createElement("button");
-    downBtn.type = "button";
-    downBtn.className = "btn secondary";
-    downBtn.textContent = "Ned";
-    downBtn.disabled = index === order.length - 1;
-    downBtn.addEventListener("click", () => {
-      moveInArray(store.categoryOrder, index, index + 1);
-      store.updatedAt = nowIso();
-      saveState();
-      renderAll();
-    });
-
-    actions.append(upBtn, downBtn);
-    row.append(name, actions);
-    els.storeOrderContainer.append(row);
+      setStatus("Kategori-rekkefølge oppdatert.");
+    }
   });
 }
 

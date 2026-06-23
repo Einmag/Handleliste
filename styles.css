@@ -350,6 +350,49 @@ select {
   gap: 8px;
 }
 
+.store-order-list {
+  display: grid;
+  gap: 8px;
+}
+
+.store-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--surface-soft);
+}
+
+.drag-handle {
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  cursor: grab;
+  user-select: none;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.store-order-ghost {
+  opacity: 0.5;
+}
+
+.store-order-chosen {
+  border-color: var(--primary);
+  background: #eef6f2;
+}
+
+.store-order-dragging {
+  box-shadow: var(--shadow);
+}
+
 .list-container {
   display: grid;
   gap: 10px;
