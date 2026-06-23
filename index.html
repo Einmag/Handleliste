@@ -134,18 +134,19 @@
   <div id="authModal" class="modal" aria-hidden="true">
     <section class="modal-card">
       <h2>Login</h2>
-      <p class="item-sub">Skriv inn e-post. Bruk koden fra e-posten her i appen, ikke lenken som åpnes i Safari.</p>
+      <p class="item-sub">Logg inn med e-post og passord.</p>
       <form id="authForm" class="search-form">
         <label>
           E-post
           <input id="authEmailInput" type="email" placeholder="navn@epost.no" required>
         </label>
-        <label id="authCodeWrap" hidden>
-          Engangskode
-          <input id="authCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
+        <label>
+          Passord
+          <input id="authPasswordInput" type="password" placeholder="Minst 6 tegn" autocomplete="current-password" required>
         </label>
         <div class="row-actions">
-          <button id="authSubmitBtn" class="btn primary" type="submit">Send kode</button>
+          <button id="authSubmitBtn" class="btn primary" type="submit">Logg inn</button>
+          <button id="authSignupBtn" class="btn secondary" type="button">Opprett bruker</button>
           <button id="authCancelBtn" class="btn secondary" type="button">Avbryt</button>
         </div>
       </form>

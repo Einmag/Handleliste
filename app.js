@@ -1,7 +1,7 @@
 const STORAGE_KEY = "handleliste.state.v1";
 const CLOUD_CONFIG_KEY = "handleliste.cloud.config.v1";
 
-// App-wide Supabase config for this deployment. Fill these once and keep the auth UI email-only.
+// App-wide Supabase config for this deployment.
 const EMBEDDED_CLOUD_CONFIG = {
   url: "https://rrwsqxsxwvdcfvdhfpnp.supabase.co",
   anonKey: "sb_publishable_z9KN-e2CKftRuWZktNLs3g_iNHEnP8i"
@@ -31,9 +31,9 @@ const els = {
   authModal: document.getElementById("authModal"),
   authForm: document.getElementById("authForm"),
   authEmailInput: document.getElementById("authEmailInput"),
-  authCodeInput: document.getElementById("authCodeInput"),
-  authCodeWrap: document.getElementById("authCodeWrap"),
+  authPasswordInput: document.getElementById("authPasswordInput"),
   authSubmitBtn: document.getElementById("authSubmitBtn"),
+  authSignupBtn: document.getElementById("authSignupBtn"),
   authCancelBtn: document.getElementById("authCancelBtn"),
   addItemForm: document.getElementById("addItemForm"),
   itemNameInput: document.getElementById("itemNameInput"),
@@ -62,10 +62,10 @@ const els = {
 
 let suggestionIndex = -1;
 let suggestionData = [];
-let pendingOtpEmail = null;
 
 const cloud = {
   client: null,
+  authListenerBound: false,
   user: null,
   householdId: null,
   syncTimer: null,
@@ -218,6 +218,9 @@ function wireButtons() {
   els.loginBtn.addEventListener("click", () => {
     handleLoginButton();
   });
+  els.authSignupBtn.addEventListener("click", () => {
+    onSignupButtonClick();
+  });
   els.authCancelBtn.addEventListener("click", closeAuthModal);
   els.searchNearMeBtn.addEventListener("click", onSearchStoresNearMe);
 }
@@ -234,7 +237,9 @@ async function initCloudAuth() {
     return;
   }
 
-  cloud.client = window.supabase.createClient(config.url, config.anonKey);
+  if (!cloud.client) {
+    cloud.client = window.supabase.createClient(config.url, config.anonKey);
+  }
 
   const { data, error } = await cloud.client.auth.getSession();
   if (!error) {
@@ -245,15 +250,18 @@ async function initCloudAuth() {
     await startCloudSyncFlow();
   }
 
-  cloud.client.auth.onAuthStateChange(async (_event, session) => {
-    cloud.user = session?.user || null;
-    updateLoginButton();
-    if (cloud.user) {
-      await startCloudSyncFlow();
-    } else {
-      stopCloudSyncFlow();
-    }
-  });
+  if (!cloud.authListenerBound) {
+    cloud.authListenerBound = true;
+    cloud.client.auth.onAuthStateChange(async (_event, session) => {
+      cloud.user = session?.user || null;
+      updateLoginButton();
+      if (cloud.user) {
+        await startCloudSyncFlow();
+      } else {
+        stopCloudSyncFlow();
+      }
+    });
+  }
 }
 
 function readCloudConfig() {
@@ -296,11 +304,8 @@ async function handleLoginButton() {
 
 function openAuthModal() {
   els.authEmailInput.value = "";
-  els.authCodeInput.value = "";
-  els.authCodeWrap.hidden = true;
-  els.authCodeInput.required = false;
-  els.authSubmitBtn.textContent = "Send kode";
-  pendingOtpEmail = null;
+  els.authPasswordInput.value = "";
+  els.authSubmitBtn.textContent = "Logg inn";
   els.authModal.classList.add("is-open");
   els.authModal.setAttribute("aria-hidden", "false");
   els.authEmailInput.focus();
@@ -309,21 +314,23 @@ function openAuthModal() {
 function closeAuthModal() {
   els.authModal.classList.remove("is-open");
   els.authModal.setAttribute("aria-hidden", "true");
-  els.authCodeWrap.hidden = true;
-  els.authCodeInput.required = false;
-  els.authCodeInput.value = "";
-  els.authSubmitBtn.textContent = "Send kode";
-  pendingOtpEmail = null;
+  els.authPasswordInput.value = "";
+  els.authSubmitBtn.textContent = "Logg inn";
 }
 
 async function onAuthFormSubmit(event) {
   event.preventDefault();
 
   const email = (els.authEmailInput.value || "").trim();
-  const code = (els.authCodeInput.value || "").trim();
+  const password = (els.authPasswordInput.value || "").trim();
 
   if (!email) {
     setStatus("Fyll ut e-post.");
+    return;
+  }
+
+  if (!password) {
+    setStatus("Fyll ut passord.");
     return;
   }
 
@@ -333,42 +340,51 @@ async function onAuthFormSubmit(event) {
     return;
   }
 
-  if (code) {
-    const verifyEmail = pendingOtpEmail || email;
-    const { error: verifyError } = await cloud.client.auth.verifyOtp({
-      email: verifyEmail,
-      token: code,
-      type: "email"
-    });
-
-    if (verifyError) {
-      setStatus(`Verifisering feilet: ${verifyError.message || "ukjent feil"}`);
-      return;
-    }
-
-    closeAuthModal();
-    setStatus("Innlogget.");
-    return;
-  }
-
-  const { error } = await cloud.client.auth.signInWithOtp({
+  const { error } = await cloud.client.auth.signInWithPassword({
     email,
-    options: {
-      shouldCreateUser: true
-    }
+    password
   });
 
   if (error) {
-    setStatus(`Kunne ikke sende kode: ${error.message || "ukjent feil"}`);
+    setStatus(`Innlogging feilet: ${error.message || "ukjent feil"}`);
     return;
   }
 
-  pendingOtpEmail = email;
-  els.authCodeWrap.hidden = false;
-  els.authCodeInput.required = true;
-  els.authSubmitBtn.textContent = "Verifiser kode";
-  els.authCodeInput.focus();
-  setStatus("Kode sendt. Ikke åpne e-postlenken i Safari, skriv koden inn i appen.");
+  closeAuthModal();
+  setStatus("Innlogget.");
+}
+
+async function onSignupButtonClick() {
+  const email = (els.authEmailInput.value || "").trim();
+  const password = (els.authPasswordInput.value || "").trim();
+
+  if (!email) {
+    setStatus("Fyll ut e-post.");
+    return;
+  }
+
+  if (password.length < 6) {
+    setStatus("Passord må være minst 6 tegn.");
+    return;
+  }
+
+  await initCloudAuth();
+  if (!cloud.client) {
+    setStatus("Mangler Supabase-oppsett i app.js.");
+    return;
+  }
+
+  const { error } = await cloud.client.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) {
+    setStatus(`Oppretting feilet: ${error.message || "ukjent feil"}`);
+    return;
+  }
+
+  setStatus("Bruker opprettet. Logg inn med e-post og passord.");
 }
 
 function scheduleCloudPush() {

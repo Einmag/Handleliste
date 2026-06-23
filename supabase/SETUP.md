@@ -6,7 +6,8 @@
 
 ## 2. Enable email login
 1. Open Authentication -> Providers.
-2. Enable Email provider (Magic Link).
+2. Enable Email provider (Email + Password).
+3. For simple beta flow, you can disable email confirmation in Auth settings.
 
 ## 3. Configure redirect URL
 1. In Authentication -> URL Configuration, add your app URL.
@@ -15,8 +16,8 @@
 ## 4. Configure app
 1. Open app and press `Login`.
 2. Set Supabase URL and anon key in `app.js` (`EMBEDDED_CLOUD_CONFIG`) and deploy.
-3. Enter your email in the app.
-4. Enter the one-time code from email in the app.
+3. Enter email and passord in the app.
+4. Use `Opprett bruker` once per person, then `Logg inn`.
 
 ## 5. Family sharing model
 - Data in `shared_lists`, `shared_list_items`, `shared_catalog`, `shared_stores` is shared across household members.
