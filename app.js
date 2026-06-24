@@ -7,6 +7,10 @@ const EMBEDDED_CLOUD_CONFIG = {
   anonKey: "sb_publishable_z9KN-e2CKftRuWZktNLs3g_iNHEnP8i"
 };
 
+// Users of this deployed app join the same household by default.
+// Change this value if you want to isolate data for a different family/group.
+const EMBEDDED_HOUSEHOLD_SEED = "handleliste-shared-household-v1";
+
 const DEFAULT_CATEGORIES = [
   "Frukt og grønt",
   "Meieri",
@@ -218,9 +222,11 @@ function wireButtons() {
   els.loginBtn.addEventListener("click", () => {
     handleLoginButton();
   });
-  els.authSignupBtn.addEventListener("click", () => {
-    onSignupButtonClick();
-  });
+  if (els.authSignupBtn) {
+    els.authSignupBtn.addEventListener("click", () => {
+      onSignupButtonClick();
+    });
+  }
   els.authCancelBtn.addEventListener("click", closeAuthModal);
   els.searchNearMeBtn.addEventListener("click", onSearchStoresNearMe);
 }
@@ -441,6 +447,38 @@ async function ensureHouseholdMembership() {
     return;
   }
 
+  const configuredHouseholdId = getConfiguredSharedHouseholdId();
+  if (configuredHouseholdId) {
+    const { error: householdInsertError } = await cloud.client
+      .from("households")
+      .insert({
+        id: configuredHouseholdId,
+        name: "Familie",
+        created_by: userId
+      });
+
+    if (householdInsertError && !isDuplicateError(householdInsertError)) {
+      setStatus("Klarte ikke å sikre delt familiegruppe i skyen.");
+      return;
+    }
+
+    const { error: memberInsertError } = await cloud.client
+      .from("household_members")
+      .insert({
+        household_id: configuredHouseholdId,
+        user_id: userId,
+        role: "owner"
+      });
+
+    if (memberInsertError && !isDuplicateError(memberInsertError)) {
+      setStatus("Klarte ikke å koble bruker til delt familiegruppe.");
+      return;
+    }
+
+    cloud.householdId = configuredHouseholdId;
+    return;
+  }
+
   const { data: existingMember } = await cloud.client
     .from("household_members")
     .select("household_id")
@@ -476,6 +514,61 @@ async function ensureHouseholdMembership() {
       user_id: userId,
       role: "owner"
     });
+}
+
+function getConfiguredSharedHouseholdId() {
+  const seed = (EMBEDDED_HOUSEHOLD_SEED || "").trim();
+  if (!seed) {
+    return null;
+  }
+  return deterministicUuidFromSeed(seed);
+}
+
+function isDuplicateError(error) {
+  const message = (error?.message || "").toLowerCase();
+  return error?.code === "23505" || message.includes("duplicate key");
+}
+
+function deterministicUuidFromSeed(seed) {
+  const parts = cyrb128(seed);
+  const hex = parts
+    .map((part) => part.toString(16).padStart(8, "0"))
+    .join("");
+
+  const chars = hex.split("");
+  chars[12] = "4";
+  const variantValue = parseInt(chars[16], 16);
+  chars[16] = ((variantValue & 0x3) | 0x8).toString(16);
+
+  const normalized = chars.join("");
+  return `${normalized.slice(0, 8)}-${normalized.slice(8, 12)}-${normalized.slice(12, 16)}-${normalized.slice(16, 20)}-${normalized.slice(20, 32)}`;
+}
+
+function cyrb128(str) {
+  let h1 = 1779033703;
+  let h2 = 3144134277;
+  let h3 = 1013904242;
+  let h4 = 2773480762;
+
+  for (let i = 0; i < str.length; i += 1) {
+    const k = str.charCodeAt(i);
+    h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+    h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+    h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+    h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+  }
+
+  h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+  h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+  h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+  h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+
+  return [
+    (h1 ^ h2 ^ h3 ^ h4) >>> 0,
+    (h2 ^ h1) >>> 0,
+    (h3 ^ h1) >>> 0,
+    (h4 ^ h1) >>> 0
+  ];
 }
 
 function hasAnyLocalData() {
@@ -1556,15 +1649,12 @@ function renderStoreOrderEditor() {
     const row = document.createElement("div");
     row.className = "store-order-row";
     row.dataset.categoryId = categoryId;
+    row.title = "Dra for å endre rekkefølge";
 
     const name = document.createElement("strong");
     name.textContent = `${index + 1}. ${category.name}`;
 
-    const handle = document.createElement("span");
-    handle.className = "drag-handle";
-    handle.textContent = "Flytt";
-
-    row.append(name, handle);
+    row.append(name);
     list.append(row);
   });
 
@@ -1580,7 +1670,7 @@ function renderStoreOrderEditor() {
 
   new window.Sortable(list, {
     animation: 140,
-    handle: ".drag-handle",
+    draggable: ".store-order-row",
     ghostClass: "store-order-ghost",
     chosenClass: "store-order-chosen",
     dragClass: "store-order-dragging",

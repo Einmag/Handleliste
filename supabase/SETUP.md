@@ -16,9 +16,10 @@
 ## 4. Configure app
 1. Open app and press `Login`.
 2. Set Supabase URL and anon key in `app.js` (`EMBEDDED_CLOUD_CONFIG`) and deploy.
-3. Enter email and password in the app.
-4. Use `Opprett bruker` once per person, then `Logg inn`.
-5. Do not use Supabase invite links for normal onboarding in this app. Register directly in the app.
+3. Keep `EMBEDDED_HOUSEHOLD_SEED` in `app.js` identical for all users of this family app so everyone joins the same shared household.
+4. Enter email and password in the app.
+5. Create users manually in Supabase Auth (dashboard), set password there, then use `Logg inn` in app.
+6. Do not use Supabase invite links for normal onboarding in this app.
 
 ## 5. Family sharing model
 - Data in `shared_lists`, `shared_list_items`, `shared_catalog`, `shared_stores` is shared across household members.
