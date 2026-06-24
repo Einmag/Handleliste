@@ -61,6 +61,6 @@ Cloud sync schema and policies are in:
 
 ## Next improvements
 
-- Household invite flow (add/remove members).
+- Simple in-app onboarding docs and clearer auth messages.
 - More advanced conflict handling and merge UX.
 - Better deletion sync semantics for all entities.

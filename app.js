@@ -29,14 +29,11 @@ const els = {
   homeCreateListBtn: document.getElementById("homeCreateListBtn"),
   loginBtn: document.getElementById("loginBtn"),
   authModal: document.getElementById("authModal"),
-  authModalTitle: document.getElementById("authModalTitle"),
-  authModalSubtitle: document.getElementById("authModalSubtitle"),
   authForm: document.getElementById("authForm"),
   authEmailInput: document.getElementById("authEmailInput"),
   authPasswordInput: document.getElementById("authPasswordInput"),
   authSubmitBtn: document.getElementById("authSubmitBtn"),
   authSignupBtn: document.getElementById("authSignupBtn"),
-  authResetBtn: document.getElementById("authResetBtn"),
   authCancelBtn: document.getElementById("authCancelBtn"),
   addItemForm: document.getElementById("addItemForm"),
   itemNameInput: document.getElementById("itemNameInput"),
@@ -75,10 +72,6 @@ const cloud = {
   pushTimer: null,
   syncInProgress: false,
   isApplyingRemote: false
-};
-
-const authUi = {
-  mode: "login"
 };
 
 let state = loadState();
@@ -228,11 +221,6 @@ function wireButtons() {
   els.authSignupBtn.addEventListener("click", () => {
     onSignupButtonClick();
   });
-  if (els.authResetBtn) {
-    els.authResetBtn.addEventListener("click", () => {
-      onResetPasswordButtonClick();
-    });
-  }
   els.authCancelBtn.addEventListener("click", closeAuthModal);
   els.searchNearMeBtn.addEventListener("click", onSearchStoresNearMe);
 }
@@ -260,7 +248,6 @@ async function initCloudAuth() {
   updateLoginButton();
   if (cloud.user) {
     await startCloudSyncFlow();
-    maybeHandleRecoveryModeFromUrl();
   }
 
   if (!cloud.authListenerBound) {
@@ -270,42 +257,11 @@ async function initCloudAuth() {
       updateLoginButton();
       if (cloud.user) {
         await startCloudSyncFlow();
-        maybeHandleRecoveryModeFromUrl();
       } else {
         stopCloudSyncFlow();
       }
     });
   }
-}
-
-function getAuthFlowTypeFromUrl() {
-  const query = new URLSearchParams(window.location.search);
-  const queryType = query.get("type");
-  if (queryType) {
-    return queryType;
-  }
-
-  const rawHash = window.location.hash.startsWith("#")
-    ? window.location.hash.slice(1)
-    : window.location.hash;
-  const hash = new URLSearchParams(rawHash);
-  return hash.get("type");
-}
-
-function clearAuthParamsFromUrl() {
-  const cleanUrl = `${window.location.origin}${window.location.pathname}`;
-  window.history.replaceState({}, document.title, cleanUrl);
-}
-
-function maybeHandleRecoveryModeFromUrl() {
-  const flowType = getAuthFlowTypeFromUrl();
-  if (flowType !== "recovery" && flowType !== "invite") {
-    return;
-  }
-
-  openAuthModal("set-password");
-  setStatus("Lag et nytt passord for den inviterte brukeren.");
-  clearAuthParamsFromUrl();
 }
 
 function readCloudConfig() {
@@ -346,63 +302,29 @@ async function handleLoginButton() {
   openAuthModal();
 }
 
-function setAuthModalMode(mode) {
-  authUi.mode = mode;
-
-  if (mode === "set-password") {
-    els.authModalTitle.textContent = "Sett passord";
-    els.authModalSubtitle.textContent = "Denne lenken er godkjent. Skriv et nytt passord og trykk Lagre passord.";
-    els.authSubmitBtn.textContent = "Lagre passord";
-    els.authSignupBtn.hidden = true;
-    if (els.authResetBtn) {
-      els.authResetBtn.hidden = true;
-    }
-    els.authEmailInput.disabled = true;
-    els.authEmailInput.required = false;
-    els.authPasswordInput.placeholder = "Minst 6 tegn";
-    return;
-  }
-
-  els.authModalTitle.textContent = "Login";
-  els.authModalSubtitle.textContent = "Logg inn med e-post og passord.";
-  els.authSubmitBtn.textContent = "Logg inn";
-  els.authSignupBtn.hidden = false;
-  if (els.authResetBtn) {
-    els.authResetBtn.hidden = false;
-  }
-  els.authEmailInput.disabled = false;
-  els.authEmailInput.required = true;
-  els.authPasswordInput.placeholder = "Minst 6 tegn";
-}
-
-function openAuthModal(mode = "login") {
+function openAuthModal() {
   els.authEmailInput.value = "";
   els.authPasswordInput.value = "";
-  setAuthModalMode(mode);
+  els.authSubmitBtn.textContent = "Logg inn";
   els.authModal.classList.add("is-open");
   els.authModal.setAttribute("aria-hidden", "false");
-  if (mode === "set-password") {
-    els.authPasswordInput.focus();
-  } else {
-    els.authEmailInput.focus();
-  }
+  els.authEmailInput.focus();
 }
 
 function closeAuthModal() {
   els.authModal.classList.remove("is-open");
   els.authModal.setAttribute("aria-hidden", "true");
   els.authPasswordInput.value = "";
-  setAuthModalMode("login");
+  els.authSubmitBtn.textContent = "Logg inn";
 }
 
 async function onAuthFormSubmit(event) {
   event.preventDefault();
-  const mode = authUi.mode;
 
   const email = (els.authEmailInput.value || "").trim();
   const password = (els.authPasswordInput.value || "").trim();
 
-  if (mode !== "set-password" && !email) {
+  if (!email) {
     setStatus("Fyll ut e-post.");
     return;
   }
@@ -418,17 +340,10 @@ async function onAuthFormSubmit(event) {
     return;
   }
 
-  let error = null;
-  if (mode === "set-password") {
-    const result = await cloud.client.auth.updateUser({ password });
-    error = result.error;
-  } else {
-    const result = await cloud.client.auth.signInWithPassword({
-      email,
-      password
-    });
-    error = result.error;
-  }
+  const { error } = await cloud.client.auth.signInWithPassword({
+    email,
+    password
+  });
 
   if (error) {
     setStatus(`Innlogging feilet: ${error.message || "ukjent feil"}`);
@@ -436,11 +351,7 @@ async function onAuthFormSubmit(event) {
   }
 
   closeAuthModal();
-  if (mode === "set-password") {
-    setStatus("Passord lagret. Du er nå innlogget.");
-  } else {
-    setStatus("Innlogget.");
-  }
+  setStatus("Innlogget.");
 }
 
 async function onSignupButtonClick() {
@@ -479,30 +390,6 @@ async function onSignupButtonClick() {
   }
 
   setStatus("Bruker opprettet. Logg inn med e-post og passord.");
-}
-
-async function onResetPasswordButtonClick() {
-  const email = (els.authEmailInput.value || "").trim();
-  if (!email) {
-    setStatus("Skriv inn e-post først, og trykk Glemt passord igjen.");
-    return;
-  }
-
-  await initCloudAuth();
-  if (!cloud.client) {
-    setStatus("Mangler Supabase-oppsett i app.js.");
-    return;
-  }
-
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await cloud.client.auth.resetPasswordForEmail(email, { redirectTo });
-
-  if (error) {
-    setStatus(`Kunne ikke sende passordlenke: ${error.message || "ukjent feil"}`);
-    return;
-  }
-
-  setStatus("Passordlenke sendt. Åpne lenken på samme URL som appen er tilgjengelig på.");
 }
 
 function scheduleCloudPush() {
