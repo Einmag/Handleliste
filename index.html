@@ -133,8 +133,8 @@
 
   <div id="authModal" class="modal" aria-hidden="true">
     <section class="modal-card">
-      <h2>Login</h2>
-      <p class="item-sub">Logg inn med e-post og passord.</p>
+      <h2 id="authModalTitle">Login</h2>
+      <p id="authModalSubtitle" class="item-sub">Logg inn med e-post og passord.</p>
       <form id="authForm" class="search-form">
         <label>
           E-post
@@ -147,6 +147,7 @@
         <div class="row-actions">
           <button id="authSubmitBtn" class="btn primary" type="submit">Logg inn</button>
           <button id="authSignupBtn" class="btn secondary" type="button">Opprett bruker</button>
+          <button id="authResetBtn" class="btn secondary" type="button">Glemt passord</button>
           <button id="authCancelBtn" class="btn secondary" type="button">Avbryt</button>
         </div>
       </form>

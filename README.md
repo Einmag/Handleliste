@@ -16,7 +16,7 @@ Handleliste is an iPhone-first Progressive Web App for shopping lists with store
 - One-tap reuse of last completed list.
 - History keeps items until you explicitly delete them.
 - PWA manifest and service worker for offline caching.
-- Supabase email magic-link login flow.
+- Supabase email/password login flow.
 - Household cloud sync foundation with shared lists/items/stores/catalog.
 - Per-user store context in cloud so family members can shop in different stores.
 
@@ -54,7 +54,7 @@ Cloud sync schema and policies are in:
 
 ## Current cloud status
 
-- Login is implemented (magic link).
+- Login is implemented (email/password).
 - Household cloud sync is implemented with initial pull/push sync strategy.
 - Shared data: lists, list items, stores, catalog.
 - Independent per user: selected store / detected store state.
